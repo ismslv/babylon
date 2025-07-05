@@ -1,0 +1,26 @@
+{
+  "base_language": "en",
+  "project_name": "Project #1",
+  "use_versions": false,
+  "languages": [
+    {"code": "en"},
+    {"code": "fr", "name": "Français"}
+  ],
+  "users": [
+    {"name": "i_am_the_law", "langs": ["en"], "is_admin": true},
+    {"name": "traducteur", "langs": ["fr"]}
+  ],
+  "custom_names": {
+    "languages": "Languages",
+    "translators": "Language masters",
+    "greeting": "Hello there, username!",
+    "password": "change password",
+    "admin": "admin area",
+    "public": "public area",
+    "exit": "logout"
+  },
+  "config_csv": {
+    "delimiter": ";",
+    "key_column": "keys"
+  }
+}
