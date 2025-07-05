@@ -4,6 +4,8 @@ if (!isset($_SESSION['uid']) || $_SESSION['role'] !== 'admin') {
     header("Location: index.php");
     exit;
 }
+
+if(isset($_GET['logout'])){ session_destroy(); header('Location: index.php'); exit; }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -51,7 +53,7 @@ if (!isset($_SESSION['uid']) || $_SESSION['role'] !== 'admin') {
     <div class="float_tool_right">
       <span  id="tr_greeting">hello, <?=htmlspecialchars($_SESSION['user'])?>!</span>
       <a id="tr_public" href="index.php">main</a>
-      <a id="tr_exit" href="logout.php">exit</a>
+      <a id="tr_exit" href="?logout=1">exit</a>
     </div>
   </div>
 
