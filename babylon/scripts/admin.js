@@ -321,8 +321,10 @@ function renderFormatMenu(menuCfg) {
           // match all [] by regexp
           text = text.replace(/\[(.*?)\]/g, function (match, p1) {
             p1 = p1.split('.');
+            if (config[p1[0]] == undefined) return match;
             var c = config[p1[0]];
             for (var i = 1; i < p1.length; i++) {
+              if (c[p1[i]] == undefined) return match;
               c = c[p1[i]];
             }
             return c || match;

@@ -5,7 +5,11 @@ function loadConfig(string $file = 'config.json'): array {
         'project_name' => 'Untitled',
         'use_versions' => false,
         'languages' => [],
-        'users' => []
+        'users' => [],
+        'config_csv' => [
+            'delimiter' => ';',
+            'key_column' => 'keys'
+        ]
     ];
     if (!file_exists($file)) return $defaults;
 
