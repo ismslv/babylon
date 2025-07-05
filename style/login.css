@@ -1,0 +1,74 @@
+@font-face {
+    font-family: "pixelcode";
+    src: url("../fonts/pixelcode.woff") format("woff");
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #000;
+}
+
+body,
+body *,
+input {
+    font-family: pixelcode, monospaced;
+    font-size: 16px;
+    color: #fff;
+    text-align: center;
+}
+
+button,
+select {
+    background: none;
+    border: none;
+    padding: 0;
+    outline: none;
+}
+
+input {
+    border: none;
+    padding: 0 10px 5px;
+    outline: none;
+    background: 0;
+}
+
+form {
+    min-width: 240px;
+}
+
+#logo {
+    width: 80px;
+    height: 80px;
+    image-rendering: pixelated;
+}
+
+#username {
+    font-size: 20px;
+    margin-top: 6px;
+}
+
+#password {
+    font-size: 27px;
+}
+
+#login {
+    padding: 0;
+    margin-top: 1px;
+    font-size: 23px;
+    color: #ff781b;
+    cursor: pointer;
+}
+
+#error {
+    color: red;
+    font-size: 30px;
+    text-transform: uppercase;
+    padding: 0px;
+    margin: 10px 0 0;
+}
