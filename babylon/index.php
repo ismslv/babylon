@@ -27,7 +27,7 @@ function is_admin()    { return ($_SESSION['role'] ?? '')==='admin'; }
     <link rel="preload" href="fonts/zpix.woff2" as="font" type="font/woff2" crossOrigin="anonymous">
     <link rel="stylesheet" href="style/style.css">
 </head>
-<body>
+<body id="body_public">
     <div class="logo">
         <img class="logo_img" src="images/logo.png">
         <div class="logo_t1">BABYLON</div>

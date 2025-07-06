@@ -18,7 +18,7 @@ if(isset($_GET['logout'])){ session_destroy(); header('Location: index.php'); ex
   <link rel="stylesheet" href="style/style.css">
   <link rel="stylesheet" href="style/admin.css">
 </head>
-<body>
+<body id="body_admin">
   <div class="logo">
     <img class="logo_img" src="images/logo.png">
     <div class="logo_t1">BABYLON</div>

@@ -273,6 +273,9 @@ h3 {
 .format-li {
     padding: 0 5px 5px 5px;
     border: 2px solid transparent;
+}
+
+#body_admin .user-li {
     cursor: pointer;
 }
 
