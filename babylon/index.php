@@ -57,7 +57,7 @@ function is_admin()    { return ($_SESSION['role'] ?? '')==='admin'; }
             <select id="verFilter" style="margin-left:6px;"></select>
         </div>
         <div class="float_tool">
-            <img src="loading.gif" id="saving" style="display:none;width: 20px;position: relative;top: 3px;left: 5px;"/>
+            <img src="images/loading.gif" id="saving" style="display:none;width: 20px;position: relative;top: 3px;left: 5px;"/>
         </div>
         <div class="float_tool_right">
             <span id="tr_greeting">hello, <?=htmlspecialchars($_SESSION['user'])?>!</span>
