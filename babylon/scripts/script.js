@@ -7,7 +7,9 @@ document.getElementById('pwd').onclick = async () => {
     const old = prompt('Current password:'); if (old === null) return;
     const neo = prompt('New password:'); if (neo === null) return;
     const res = await jpost('api.php?action=change_password', { old, new: neo });
-    alert(res.success ? 'Password changed' : 'Wrong current password');
+    alert(res.success
+        ? 'Password changed'
+        : (res.error || 'Unknown error'));
 };
 async function jget(url) { return (await fetch(url)).json() }
 async function jpost(url, obj) {
@@ -58,6 +60,8 @@ async function loadStrings() {
     if (!activeLang) return;
     const resp = await jget('api.php?action=strings&lang=' + encodeURIComponent(activeLang));
     const editOK = resp.editable;
+    const isBase = activeLang === config.base_language;
+    const commentOK = isBase && resp.can_comment;
     const rows = resp.rows;
     const box = document.getElementById('stringsList');
     const minVer = parseFloat(document.getElementById('verFilter').value || '1.0');
@@ -67,18 +71,35 @@ async function loadStrings() {
         allVersions.add(r.version);
         return parseFloat(r.version) >= minVer;
     });
-
     box.innerHTML = rowsFiltered.map(s => `
     <div class="string">
         <div class="string_left">
         ${config.use_versions ? `<span class="ver-badge">[${s.version}]</span><br/>` : ''}
-        <div class="string-key">${s.key}</div><br/>
-        <label class="fuzzyLbl"><input type="checkbox" class="fuzzy-box" data-id="${s.id}"> fuzzy</label>
-        ${activeLang == config.base_language && editOK ? '<button onclick="deleteString('+s.id+')">delete</button>' : ''}
+        <div class="string-key" meta-key="${escapeHTML(s.key)}">${config.split_keys ? "<div>" + escapeHTML(s.key).replaceAll(config.split_keys, "</div><div>") + "</div>" : escapeHTML(s.key)}</div>
         </div>
         <div class="string_right">
-        ${s.english ? `<div class="string-en">${s.english}</div>` : ''}
-        <textarea class="string-inp" type="text" data-lang="${activeLang}" data-id="${s.id}" height="auto" ${editOK ? '' : 'readonly'}>${escapeHTML(s.translation || '')}</textarea>
+            ${!isBase && s.comment
+                ? `<div class="comment-inp-container"><div class="string-comment">${escapeHTML(s.comment)}</div></div>`
+                : ''}
+
+            ${s.english
+                ? `<div class="string-en">${escapeHTML(s.english)}</div>`
+                : ''}
+            
+            ${commentOK
+                ? `<div class="comment-inp-container"><textarea class="comment-inp"
+                        data-id="${s.id}"
+                    >${escapeHTML(s.comment || '')}</textarea></div>`
+                : ''}
+
+            <textarea class="string-inp"
+                data-lang="${activeLang}"
+                data-id="${s.id}"
+                ${editOK ? '' : 'readonly'}
+            >${escapeHTML(s.translation || '')}</textarea>
+            
+            <label class="fuzzyLbl"><input type="checkbox" class="fuzzy-box" data-id="${s.id}"> fz</label>
+            ${activeLang == config.base_language && editOK ? '<button onclick="deleteString('+s.id+')">delete</button>' : ''}
         </div>
     </div>
     `).join('');
@@ -110,6 +131,42 @@ async function loadStrings() {
         }
         autoResize(inp);
     });
+    box.querySelectorAll('.comment-inp').forEach(inp => {
+        inp.addEventListener('input', () => {
+            autoResize(inp);
+        });
+
+        inp.addEventListener('change', async () => {
+
+            const savingEl = document.getElementById('saving');
+
+            savingEl.style.display = 'inline';
+            inp.classList.add('saving');
+
+            try {
+                const res = await jpost(
+                    'api.php?action=save_comment',
+                    {
+                        string_id: +inp.dataset.id,
+                        comment: inp.value
+                    }
+                );
+
+                if (!res.success) {
+                    throw new Error(res.error || 'Cannot save comment');
+                }
+
+            } catch (err) {
+                alert(err.message);
+
+            } finally {
+                inp.classList.remove('saving');
+                savingEl.style.display = 'none';
+            }
+        });
+
+        autoResize(inp);
+    });
     box.querySelectorAll('.string').forEach(row => {
         const input = row.querySelector('.string-inp');
         const check = row.querySelector('.fuzzy-box');
@@ -133,11 +190,21 @@ async function loadStrings() {
         });
     });
     updateUntranslatedCount();
-    if (!document.getElementById('verFilter').options.length) buildVersionFilter();
+    
+    const previousVersion = document.getElementById('verFilter').value || '1.0';
+
+    allVersions.add('1.0');
+    buildVersionFilter();
+
+    if (allVersions.has(previousVersion)) {
+        document.getElementById('verFilter').value = previousVersion;
+    }
+
     document.querySelectorAll('.lang-li').forEach(inp => {
         if (inp.getAttribute('data-code') === activeLang) inp.classList.add('active');
         else inp.classList.remove('active');
     })
+    filterByKey();
 }
 document.addEventListener('DOMContentLoaded', () => {
     getConfig();
@@ -185,17 +252,25 @@ function updateLanguageCounter(lang, translated) {
 
 let unIdx = 0;
 function scrollToUntranslated(dir) {
-    const un = Array.from(document.querySelectorAll('.string-inp.untranslated'));
+    const un = Array.from(
+        document.querySelectorAll('.string-inp.untranslated')
+    ).filter(inp => inp.closest('.string').style.display !== 'none');
     if (un.length === 0) return;
-    unIdx = (unIdx + dir + un.length) % un.length;
+    unIdx = unIdx < 0
+        ? (dir > 0 ? 0 : un.length - 1)
+        : (unIdx + dir + un.length) % un.length;
     un[unIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
     un[unIdx].focus();
 }
 let fuIdx = 0;
 function scrollToFuzzy(dir) {
-    const un = Array.from(document.querySelectorAll('.string-inp.fuzzy'));
+    const un = Array.from(
+        document.querySelectorAll('.string-inp.fuzzy')
+    ).filter(inp => inp.closest('.string').style.display !== 'none');
     if (un.length === 0) return;
-    fuIdx = (fuIdx + dir + un.length) % un.length;
+    fuIdx = fuIdx < 0
+        ? (dir > 0 ? 0 : un.length - 1)
+        : (fuIdx + dir + un.length) % un.length;
     un[fuIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
     un[fuIdx].focus();
 }
@@ -227,6 +302,7 @@ function getConfig() {
         .then(r => r.json()).then(cfg => {
             config = cfg;
             setUIfromConfig();
+            initQuickSave();
         });
 }
 
@@ -234,6 +310,7 @@ function setUIfromConfig() {
     document.querySelector('.logo_t2').textContent = config.project_name;
     document.title = "Babylon • " + config.project_name;
     document.getElementById('verFilter').style.display = config.use_versions ? 'block' : 'none';
+    loadRules();
 
     if (config.custom_names) {
         if (config.custom_names.languages)
@@ -260,4 +337,136 @@ function deleteString(sid) {
       .then(res => {
         loadStrings();
       });
+}
+
+function filterByKey() {
+    const query = document.getElementById('keySearch')
+        .value.trim().toLowerCase();
+
+    document.querySelectorAll('#stringsList .string').forEach(row => {
+        const key = row.querySelector('.string-key').getAttribute("meta-key").toLowerCase();
+
+        const visible = key.includes(query);
+
+        row.style.display = visible ? '' : 'none';
+
+        if (visible) {
+            row.querySelectorAll('.string-inp, .comment-inp')
+                .forEach(autoResize);
+        }
+    });
+
+    unIdx = -1;
+    fuIdx = -1;
+}
+
+const newStringBtn = document.getElementById('newString');
+
+if (newStringBtn) {
+    const dialog = document.getElementById('newStringDialog');
+    const form = document.getElementById('newStringForm');
+    const error = document.getElementById('newStringError');
+    const submit = document.getElementById('newStringSubmit');
+
+    newStringBtn.onclick = () => {
+        form.reset();
+        error.textContent = '';
+
+        document.getElementById('newStringVersionBlock').hidden =
+            !config.use_versions;
+
+        dialog.showModal();
+        document.getElementById('newStringKey').focus();
+    };
+
+    document.getElementById('newStringCancel').onclick = () => {
+        if (!submit.disabled) dialog.close();
+    };
+
+    dialog.addEventListener('cancel', e => {
+        if (submit.disabled) e.preventDefault();
+    });
+
+    form.onsubmit = async e => {
+        e.preventDefault();
+
+        const key = document.getElementById('newStringKey').value.trim();
+        const value = document.getElementById('newStringValue').value;
+        const version = document.getElementById('newStringVersion').value;
+
+        error.textContent = '';
+        submit.disabled = true;
+
+        try {
+            const res = await jpost('api.php?action=new_string', {
+                key,
+                value,
+                version
+            });
+
+            if (!res.success) {
+                error.textContent = res.error || 'Cannot create string';
+                return;
+            }
+
+            dialog.close();
+
+            try {
+                // Switch to base language.
+                activeLang = config.base_language || 'en';
+
+                // Reset search and version filters.
+                document.getElementById('keySearch').value = '';
+                document.getElementById('verFilter').value = '1.0';
+
+                // Refresh language progress and string list.
+                await loadLangs();
+                await loadStrings();
+
+                // Find and scroll to the new string.
+                const inp = document.querySelector(
+                    `.string-inp[data-id="${res.id}"]`
+                );
+
+                if (inp) {
+                    inp.closest('.string').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+
+                    inp.focus();
+                }
+            } catch (err) {
+                alert('String created, but refreshing failed. Reload the page.');
+                console.error(err);
+            }
+
+        } catch (err) {
+            error.textContent = 'Server error. Check whether the key was created.';
+            console.error(err);
+        } finally {
+            submit.disabled = false;
+        }
+    };
+}
+
+function loadRules() {
+    const rules = config.translation_rules;
+    const section = document.getElementById('rulesSidebar');
+    const list = document.getElementById('rulesListSidebar');
+
+    list.replaceChildren();
+
+    if (!Array.isArray(rules) || !rules.length) {
+        section.hidden = true;
+        return;
+    }
+
+    for (const rule of rules) {
+        const li = document.createElement('li');
+        li.textContent = rule;
+        list.appendChild(li);
+    }
+
+    section.hidden = false;
 }

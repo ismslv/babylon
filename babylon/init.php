@@ -3,7 +3,7 @@ require_once 'config.php';
 $config = loadConfig();
 $languageMap = require 'languages.php';
 
-$db = new PDO('sqlite:translations.db');
+$db = new PDO('sqlite:' . __DIR__ . '/translations.db');
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->exec('PRAGMA busy_timeout=3000');
 
@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS strings (
     id INTEGER PRIMARY KEY,
     skey TEXT UNIQUE,
     english TEXT,
-    version TEXT
+    version TEXT,
+    comment TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS translations (
     id INTEGER PRIMARY KEY,
@@ -44,6 +45,27 @@ CREATE TABLE IF NOT EXISTS user_presence (
 );
 SQL
 );
+
+// Migration: add string comments to existing databases.
+$columns = $db->query('PRAGMA table_info(strings)')
+              ->fetchAll(PDO::FETCH_ASSOC);
+
+if (!in_array('comment', array_column($columns, 'name'), true)) {
+    try {
+        $db->exec(
+            "ALTER TABLE strings
+             ADD COLUMN comment TEXT NOT NULL DEFAULT ''"
+        );
+    } catch (PDOException $e) {
+        // Another simultaneous request may have added it.
+        $columns = $db->query('PRAGMA table_info(strings)')
+                      ->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!in_array('comment', array_column($columns, 'name'), true)) {
+            throw $e;
+        }
+    }
+}
 
 // pre-fill languages if empty
 if (!$db->query('SELECT COUNT(*) FROM languages')->fetchColumn()) {

@@ -57,17 +57,29 @@ li {
 }
 
 .string_left {
-    width: 200px;
+    width: 240px;
+    position: relative;
 }
 
 .string_right {
     flex: 1;
+    position: relative;
+}
+
+.string_right > button {
+    position: absolute;
+    top: 5px;
+    right: 47px;
+    padding: 0 5px 5px;
+    font-size: 14px;
+    background: #790000;
+    color: #cb4e4e;
 }
 
 .sidebar {
-    width: 200px;
-    background: #f2f2f2;
-    background: #000;
+    width: 197px;
+    border-right: 3px solid #3c3c3c;
+    background: #151515;
     display: flex;
     flex-direction: column;
     padding-top: 60px;
@@ -112,12 +124,12 @@ li {
 #stringsList {
     flex: 1;
     overflow-y: auto;
-    padding: 8px
+    padding: 8px 8px 8px 0;
 }
 
 .string {
-    border-bottom: 3px solid #393939;
-    padding: 10px 40px 15px 0px;
+    border-bottom: 3px solid #2d2d2d;
+    padding: 10px 40px 15px 10px;
     display: flex;
     gap: 20px;
 }
@@ -125,14 +137,45 @@ li {
 .string-key {
     font-weight: bold;
     display: inline-block;
-    color: #bababa;
-    overflow-x: clip;
+    color: #ff913d;
+    font-size: 16px;
+    text-wrap: auto;
+    overflow-wrap: anywhere;
     width: 100%;
-    padding-bottom: 6px;
+    text-align: right;
+}
+
+.string-key > div:nth-child(1) {
+    color: #ff913d;
+}
+
+.string-key > div:nth-child(2) {
+    color: #ffa663;
+}
+
+.string-key > div:nth-child(3) {
+    color: #ffbf8e;
+}
+
+.string-key > div:nth-child(4) {
+    color: #ffd3b1;
+}
+
+.string-key > div:nth-child(5) {
+    color: #ffdcc1;
+}
+
+.string-key > div:nth-child(6) {
+    color: #ffe6d3;
 }
 
 .string-en {
-    color: #4a70b1;
+    color: #81a2d9;
+    background: none;
+    border: none;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    padding: 6px 30px 10px 0;
 }
 
 .string-inp {
@@ -142,7 +185,7 @@ li {
     margin-top: 8px;
     background: transparent;
     border: 12px solid;
-    border-image: url("../images/sliceborder.9.png") 10 10 10 10 stretch;
+    border-image: url("../images/sliceborder.9.png?1") 10 10 10 10 stretch;
     border-image-slice: 10 10 10 10;
     outline: none;
     font-size: 18px;
@@ -150,6 +193,8 @@ li {
     overflow: hidden;
     min-height: 24px;
     height: 24px;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
 }
 
 .string-inp[data-lang=ja],
@@ -171,6 +216,13 @@ li {
 /* red     */
 .string-inp.translated {
     filter: sepia(1) brightness(0.7) saturate(20);
+}
+
+.fuzzyLbl {
+    opacity: 0.3;
+    position: absolute;
+    top: 6px;
+    right: -30px;
 }
 
 /* green   */
@@ -342,4 +394,101 @@ select:hover {
     position:absolute;
     top:4px;
     right:4px;
+}
+
+input[type="search"] {
+    border-style: none;
+    outline: none;
+    background: #444;
+    padding: 6px 10px 6px 10px;
+    font-size: 15px;
+    height: 28px;
+    max-height: 28px;
+    min-height: 28px;
+}
+
+dialog {
+    background: #111;
+    border: 2px solid white;
+    box-shadow: 11px 10px 0 #445;
+}
+
+dialog h3 {
+    margin-top: 0px !important;
+}
+
+dialog label {
+    width: 40px;
+    display: inline-block;
+}
+
+dialog input, dialog textarea {
+    width: 380px;
+    border: 2px solid #999;
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+}
+
+dialog > form > div:not(:last-child) {
+    margin-bottom: 20px;
+}
+
+#quickSaveStatus {
+    display: none;
+}
+
+#quickSave {
+    margin-right: 10px;
+}
+
+#rulesListSidebar {
+    font-size: 0.85em;
+    padding-left: 16px;
+}
+
+#rulesListSidebar li {
+    margin-bottom: 12px;
+    line-height: 1.4;
+    font-size: 14px;
+    list-style: square;
+    color: #ffcca5;
+}
+
+.comment-inp,
+.string-comment {
+    font-size: 0.85em;
+    box-sizing: border-box;
+    width: 100%;
+    color: #a6a6a6;
+    padding: 6px 0 6px 23px;
+}
+
+.comment-inp {
+    border: none;
+    outline: none;
+    resize: none;
+    min-height: 28px;
+    background: none;
+    width: 100%;
+    display: block;
+}
+
+.comment-inp-container {
+    position: relative;
+}
+
+.comment-inp-container::before {
+    content: "//";
+    display: block;
+    position: absolute;
+    color: #a6a6a6;
+    left: 0px;
+    top: 4px;
+}
+
+.string-comment {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin-bottom: 4px;
 }

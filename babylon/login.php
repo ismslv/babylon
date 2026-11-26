@@ -1,7 +1,7 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     session_start();
-    $db = new PDO('sqlite:translations.db');
+    $db = new PDO('sqlite:' . __DIR__ . '/translations.db');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     $user = trim($_POST['user'] ?? '');

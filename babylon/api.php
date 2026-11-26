@@ -9,10 +9,25 @@ if (!isset($_SESSION['uid'])) {
 }
 
 $uid = $_SESSION['uid'];
-$user = $_SESSION['user'];
-$role = $_SESSION['role'];
 
 $db = require 'init.php';
+
+// Get current user and role from the database.
+$st = $db->prepare(
+    'SELECT username, role FROM users WHERE id=?'
+);
+$st->execute([$uid]);
+$currentUser = $st->fetch(PDO::FETCH_ASSOC);
+
+if (!$currentUser) {
+    session_destroy();
+    http_response_code(403);
+    echo json_encode(['error' => 'unauthorized']);
+    exit;
+}
+
+$user = $_SESSION['user'] = $currentUser['username'];
+$role = $_SESSION['role'] = $currentUser['role'];
 
 // presence tracking
 $db->prepare('INSERT INTO user_presence(user_id,last_seen) VALUES(?,?) 
@@ -41,6 +56,65 @@ function langsOf(PDO $db, $uid) {
 }
 
 $act = $_GET['action'] ?? '';
+
+$adminActions = [
+    'add_user',
+    'user_rename',
+    'user_delete',
+    'user_setrole',
+    'user_setlangs',
+
+    'add_language',
+    'lang_rename',
+    'lang_delete',
+
+    'new_string',
+    'string_delete',
+
+    'import',
+    'export',
+    'export_zip',
+
+    'save_comment',
+];
+
+if (in_array($act, $adminActions, true) && $role !== 'admin') {
+    http_response_code(403);
+    echo json_encode(['error' => 'admin access required']);
+    exit;
+}
+
+$postActions = [
+    'add_user',
+    'user_rename',
+    'user_delete',
+    'user_setrole',
+    'user_setlangs',
+
+    'add_language',
+    'lang_rename',
+    'lang_delete',
+
+    'new_string',
+    'string_delete',
+
+    'import',
+    'save_translation',
+    'mark_fuzzy',
+    'change_password',
+
+    'save_comment',
+];
+
+if (
+    in_array($act, $postActions, true) &&
+    $_SERVER['REQUEST_METHOD'] !== 'POST'
+) {
+    http_response_code(405);
+    header('Allow: POST');
+    echo json_encode(['error' => 'POST required']);
+    exit;
+}
 
 switch ($act) {
 case 'users':
@@ -88,15 +162,27 @@ case 'strings':
 
     $editable = in_array($code, langsOf($db, $uid));
     if ($code == $config['base_language']) {
-        $rows = $db->query('SELECT id,skey `key`,"" english,version,english translation,0 fuzzy 
-                            FROM strings')->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $db->query(
+            'SELECT id, skey `key`, "" english, version,
+                    english translation, 0 fuzzy, comment
+            FROM strings'
+        )->fetchAll(PDO::FETCH_ASSOC);
+
     } else {
-        $rows = $db->query("SELECT s.id,s.skey `key`,s.english,s.version,
-                            t.value translation,IFNULL(t.fuzzy,0) fuzzy
-                            FROM strings s 
-                            LEFT JOIN translations t ON s.id=t.string_id AND t.language_id=$lid")->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $db->query(
+            "SELECT s.id, s.skey `key`, s.english, s.version,
+                    s.comment,
+                    t.value translation, IFNULL(t.fuzzy,0) fuzzy
+            FROM strings s
+            LEFT JOIN translations t
+                ON s.id=t.string_id AND t.language_id=$lid"
+        )->fetchAll(PDO::FETCH_ASSOC);
     }
-    echo json_encode(['editable'=>$editable,'rows'=>$rows]);
+    echo json_encode([
+        'editable' => $editable,
+        'can_comment' => $role === 'admin',
+        'rows' => $rows
+    ]);
     break;
 
 case 'save_translation':
@@ -379,6 +465,96 @@ case 'format_menu':
     }
     echo json_encode($formats[$fmt]->menu());
     exit;
+
+case 'new_string':
+    $in = json_decode(file_get_contents('php://input'), true);
+
+    $key = trim($in['key'] ?? '');
+    $val = $in['value'] ?? '';
+    $ver = !empty($config['use_versions'])
+        ? trim($in['version'] ?? '1.0')
+        : '1.0';
+
+    if ($key === '') {
+        echo json_encode(['error' => 'key cannot be empty']);
+        break;
+    }
+
+    if (!preg_match('/^\d+(\.\d+)?$/', $ver)) {
+        echo json_encode(['error' => 'invalid version']);
+        break;
+    }
+
+    $st = $db->prepare(
+        'INSERT INTO strings(skey, english, version)
+         VALUES(?, ?, ?)
+         ON CONFLICT(skey) DO NOTHING'
+    );
+
+    $st->execute([$key, $val, $ver]);
+
+    if (!$st->rowCount()) {
+        echo json_encode(['error' => 'key already exists']);
+        break;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'id' => (int)$db->lastInsertId()
+    ]);
+    break;
+
+case 'change_password':
+    $in = json_decode(file_get_contents('php://input'), true);
+
+    $old = trim($in['old'] ?? '');
+    $new = trim($in['new'] ?? '');
+
+    if ($new === '') {
+        echo json_encode(['error' => 'New password cannot be empty']);
+        break;
+    }
+
+    $st = $db->prepare('SELECT password FROM users WHERE id=?');
+    $st->execute([$_SESSION['uid']]);
+    $hash = $st->fetchColumn();
+
+    if (!$hash) {
+        echo json_encode(['error' => 'User not found']);
+        break;
+    }
+
+    if (!password_verify($old, $hash)) {
+        echo json_encode(['error' => 'Wrong current password']);
+        break;
+    }
+
+    $hash = password_hash($new, PASSWORD_DEFAULT);
+
+    $db->prepare('UPDATE users SET password=? WHERE id=?')
+       ->execute([$hash, $_SESSION['uid']]);
+
+    echo json_encode(['success' => true]);
+    break;
+
+case 'save_comment':
+
+    $in = json_decode(file_get_contents('php://input'), true);
+
+    $sid = intval($in['string_id'] ?? 0);
+    $comment = $in['comment'] ?? '';
+
+    if (!$sid || !is_string($comment)) {
+        echo json_encode(['error' => 'bad input']);
+        break;
+    }
+
+    $db->prepare(
+        'UPDATE strings SET comment=? WHERE id=?'
+    )->execute([$comment, $sid]);
+
+    echo json_encode(['success' => true]);
+    break;
 
 default:
     echo json_encode(['error'=>'bad request']);
